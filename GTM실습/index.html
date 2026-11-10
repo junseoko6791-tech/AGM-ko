@@ -2274,5 +2274,84 @@ tickDealTimer();
 setInterval(tickDealTimer, 1000);
 handleRoute();   // 최초 진입 경로 처리 (딥링크·새로고침 대응)
 </script>
+<!-- GA4 이벤트 추적 (텍소노미: promotion_click / item_view / item_click / add_to_cart / purchase) -->
+<script>
+(function () {
+  function track(name, params) {
+    if (typeof gtag === 'function') gtag('event', name, params);
+  }
+
+  // 카드가 속한 영역 이름 (텍소노미: section)
+  var SECTION_BY_LIST = {
+    'today-deal-list': '특가',
+    'best-product-list': '베스트',
+    'new-arrival-list': '신상품',
+    'product-grid': '전체상품',
+    'recently-viewed-list': '최근 본 상품'
+  };
+  var CARD_SEL = '.deal-card, .best-card, .product-card';
+  function sectionOf(card) {
+    var list = card.closest('#today-deal-list, #best-product-list, #new-arrival-list, #product-grid, #recently-viewed-list');
+    return list ? SECTION_BY_LIST[list.id] : '';
+  }
+
+  // 1) promotion_click — 시원 할인 프로모션 배너 클릭 시
+  document.addEventListener('click', function (e) {
+    if (e.target.closest('#event-banner-summer')) {
+      track('promotion_click', { promotion_name: '시원 할인 프로모션' });
+    }
+  });
+
+  // 2) item_click — 메인 제품 클릭 시 (찜/장바구니 버튼 제외)
+  document.addEventListener('click', function (e) {
+    var card = e.target.closest(CARD_SEL);
+    if (!card || !card.closest('#page-home')) return;
+    if (e.target.closest('.btn-wishlist, .btn-add-to-cart')) return;
+    track('item_click', { item_name: card.dataset.productName, section: sectionOf(card) });
+  });
+
+  // 3) item_view — 메인 제품이 화면에 50% 이상 노출될 때 (카드당 1회)
+  if ('IntersectionObserver' in window) {
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (en) {
+        if (!en.isIntersecting) return;
+        var card = en.target;
+        io.unobserve(card);
+        track('item_view', { item_name: card.dataset.productName, section: sectionOf(card) });
+      });
+    }, { threshold: 0.5 });
+    var seen = new WeakSet();
+    function scan() {
+      document.querySelectorAll('#page-home ' + CARD_SEL.split(', ').join(', #page-home ')).forEach(function (c) {
+        if (!seen.has(c) && c.dataset.productName) { seen.add(c); io.observe(c); }
+      });
+    }
+    new MutationObserver(scan).observe(document.getElementById('page-home'), { childList: true, subtree: true });
+    scan();
+  }
+
+  // 4) add_to_cart / 5) purchase — 상품 상세 페이지 (선택 옵션·수량 반영)
+  function detailParams(productId) {
+    var p = PRODUCTS.find(function (x) { return x.id === productId; });
+    if (!p) return null;
+    var v = getVariant(p, selectedVariantId);
+    return { item_name: p.name, item_option: v.label, value: v.price * detailQty };
+  }
+  var _addFromDetail = window.addToCartFromDetail;
+  window.addToCartFromDetail = function (productId) {
+    var params = detailParams(productId);
+    var r = _addFromDetail.apply(this, arguments);
+    if (params) track('add_to_cart', params);
+    return r;
+  };
+  var _buyNow = window.buyNow;
+  window.buyNow = function (productId) {
+    var params = detailParams(productId);
+    var r = _buyNow.apply(this, arguments);
+    if (params) track('purchase', params);
+    return r;
+  };
+})();
+</script>
 </body>
 </html>
