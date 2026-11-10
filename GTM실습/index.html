@@ -2351,6 +2351,23 @@ handleRoute();   // 최초 진입 경로 처리 (딥링크·새로고침 대응)
       login_status: currentUser ? 'logged_in' : 'logged_out'
     });
   }, true);  // capture: 페이지 이동 전의 page_type을 수집
+  // 7) add_to_wishlist — 상품 상세 찜 버튼 클릭 시 (찜이 새로 켜질 때만; 해제는 전송하지 않음)
+  document.addEventListener('click', function (e) {
+    var btn = e.target.closest('#btn-wishlist-detail');
+    if (!btn) return;
+    var id = btn.dataset.productId;
+    if (wishlist.indexOf(id) !== -1) return;   // 이미 찜한 상품 → 이번 클릭은 해제
+    var p = PRODUCTS.find(function (x) { return x.id === id; });
+    if (!p) return;
+    track('add_to_wishlist', {
+      item_name: p.name,
+      item_category: p.category,
+      value: p.price,
+      currency: 'KRW',
+      click_location: 'product_detail',
+      login_status: currentUser ? 'logged_in' : 'logged_out'
+    });
+  }, true);  // capture: 찜 상태가 바뀌기 전에 판정
   // 4) add_to_cart / 5) purchase — 상품 상세 페이지 (선택 옵션·수량 반영)
   function detailParams(productId) {
     var p = PRODUCTS.find(function (x) { return x.id === productId; });
