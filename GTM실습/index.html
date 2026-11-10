@@ -2330,6 +2330,27 @@ handleRoute();   // 최초 진입 경로 처리 (딥링크·새로고침 대응)
     scan();
   }
 
+  // 6) go_to_wishlist — 헤더 찜 목록 버튼 클릭 시
+  function pageType() {
+    var h = (location.hash || '#/').replace(/^#/, '');
+    if (h.indexOf('/category') === 0) return 'category';
+    if (h.indexOf('/search') === 0) return 'search';
+    if (h.indexOf('/product') === 0) return 'product_detail';
+    if (h.indexOf('/cart') === 0) return 'cart';
+    if (h.indexOf('/checkout') === 0) return 'checkout';
+    if (h.indexOf('/order') === 0) return 'order_complete';
+    if (h.indexOf('/wishlist') === 0) return 'wishlist';
+    return 'home';
+  }
+  document.addEventListener('click', function (e) {
+    if (!e.target.closest('#btn-wishlist-header')) return;
+    track('go_to_wishlist', {
+      click_location: 'header',
+      page_type: pageType(),
+      wishlist_count: wishlist.length,
+      login_status: currentUser ? 'logged_in' : 'logged_out'
+    });
+  });
   // 4) add_to_cart / 5) purchase — 상품 상세 페이지 (선택 옵션·수량 반영)
   function detailParams(productId) {
     var p = PRODUCTS.find(function (x) { return x.id === productId; });
